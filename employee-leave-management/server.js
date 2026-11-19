@@ -1,24 +1,10 @@
 const express = require('express');
-const cors = require('cors');
-
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// ==========================================
-// Middleware (Assessment Component 1: 2 Marks)
-// ==========================================
-app.use(cors());
+// Middleware to accept JSON body in requests
 app.use(express.json());
 
-// Request logger middleware for debugging/demonstration
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
-
-// ==========================================
-// In-Memory Data Store (Initial Data)
-// ==========================================
+// In-Memory Array of Leave Requests (Initial Data from question)
 let leaves = [
   {
     id: 701,
@@ -46,271 +32,174 @@ let leaves = [
   }
 ];
 
-// Valid allowed values for enum fields
-const VALID_LEAVE_TYPES = ['Casual', 'Sick', 'Earned'];
-const VALID_STATUSES = ['Pending', 'Approved', 'Rejected'];
+// Variable to generate next unique ID (starts at 704)
+let nextId = 704;
 
-// Helper function to validate leave request payload
-function validateLeavePayload(data, isUpdate = false) {
-  const errors = [];
-  const { employeeName, employeeCode, leaveType, days, status } = data;
-
-  // employeeName validation
-  if (!isUpdate || employeeName !== undefined) {
-    if (!employeeName || typeof employeeName !== 'string' || employeeName.trim() === '') {
-      errors.push("employeeName is required and must be a non-empty string.");
-    }
-  }
-
-  // employeeCode validation
-  if (!isUpdate || employeeCode !== undefined) {
-    if (!employeeCode || typeof employeeCode !== 'string' || employeeCode.trim() === '') {
-      errors.push("employeeCode is required and must be a non-empty string.");
-    }
-  }
-
-  // leaveType validation: Casual, Sick, or Earned
-  if (!isUpdate || leaveType !== undefined) {
-    if (!leaveType || !VALID_LEAVE_TYPES.includes(leaveType)) {
-      errors.push(`leaveType must be one of: ${VALID_LEAVE_TYPES.join(', ')}.`);
-    }
-  }
-
-  // days validation: positive integer (> 0)
-  if (!isUpdate || days !== undefined) {
-    if (days === undefined || days === null || typeof days !== 'number' || !Number.isInteger(days) || days <= 0) {
-      errors.push("days is required and must be a positive integer greater than 0.");
-    }
-  }
-
-  // status validation: Pending, Approved, or Rejected
-  if (!isUpdate || status !== undefined) {
-    if (!status || !VALID_STATUSES.includes(status)) {
-      errors.push(`status must be one of: ${VALID_STATUSES.join(', ')}.`);
-    }
-  }
-
-  return errors;
-}
-
-// Helper to generate a unique numeric ID
-function generateUniqueId() {
-  if (leaves.length === 0) return 701;
-  return Math.max(...leaves.map(l => l.id)) + 1;
-}
-
-// ==========================================
-// Root / Health Check Endpoint
-// ==========================================
+// Simple home route to check if server is running
 app.get('/', (req, res) => {
-  res.status(200).json({
-    message: "Employee Leave Management REST API is running",
-    endpoints: {
-      "GET all records": "GET /api/leaves",
-      "POST a new record": "POST /api/leaves",
-      "GET pending leave requests": "GET /api/leaves/pending",
-      "Filter records by status": "GET /api/leaves/filter?status=value",
-      "GET leave request by ID": "GET /api/leaves/:id",
-      "PUT / update record by ID": "PUT /api/leaves/:id",
-      "DELETE record by ID": "DELETE /api/leaves/:id"
-    }
-  });
+  res.status(200).json({ message: "Employee Leave Management API is running" });
 });
 
-// ==========================================
-// IMPORTANT IMPLEMENTATION NOTE:
-// Specific routes (/pending and /filter) are declared
-// BEFORE dynamic parameterized routes (/:id) to prevent
-// 'pending' or 'filter' from being treated as an ID.
-// ==========================================
+// =========================================================================
+// NOTE: We put '/pending' and '/filter' BEFORE '/:id' so Express does not
+// confuse 'pending' or 'filter' as an ID.
+// =========================================================================
 
-// ==========================================
-// 7. GET Pending Leave Requests (2 Marks)
-// Route: GET /api/leaves/pending
-// ==========================================
+// 7. GET pending leave requests (GET /api/leaves/pending)
 app.get('/api/leaves/pending', (req, res) => {
-  const pendingLeaves = leaves.filter(leave => leave.status.toLowerCase() === 'pending');
-  return res.status(200).json(pendingLeaves);
+  const pendingLeaves = leaves.filter(l => l.status.toLowerCase() === 'pending');
+  res.status(200).json(pendingLeaves);
 });
 
-// ==========================================
-// 6. Filter Records by Status (3 Marks)
-// Route: GET /api/leaves/filter?status=value
-// Case-insensitive filtering. Returns [] with HTTP 200 if no match.
-// ==========================================
+// 6. Filter records by status (GET /api/leaves/filter?status=value)
 app.get('/api/leaves/filter', (req, res) => {
-  const { status } = req.query;
+  const status = req.query.status;
 
-  if (!status || typeof status !== 'string' || status.trim() === '') {
-    return res.status(400).json({
-      error: "Query parameter 'status' is required. Example: /api/leaves/filter?status=Pending"
-    });
+  // Check if status is provided in the URL
+  if (!status) {
+    return res.status(400).json({ message: "status query parameter is required" });
   }
 
-  const searchStatus = status.trim().toLowerCase();
-  const filteredLeaves = leaves.filter(
-    leave => leave.status.toLowerCase() === searchStatus
-  );
-
-  return res.status(200).json(filteredLeaves);
+  // Filter case-insensitively
+  const filtered = leaves.filter(l => l.status.toLowerCase() === status.toLowerCase());
+  res.status(200).json(filtered);
 });
 
-// ==========================================
-// 1. GET All Records (2 Marks)
-// Route: GET /api/leaves
-// Return all records in JSON format with HTTP 200.
-// ==========================================
+// 1. GET all records (GET /api/leaves)
 app.get('/api/leaves', (req, res) => {
-  return res.status(200).json(leaves);
+  res.status(200).json(leaves);
 });
 
-// ==========================================
-// 2. POST a New Record with Validation (4 Marks)
-// Route: POST /api/leaves
-// Validates fields, generates unique numeric id, returns created record with HTTP 201.
-// Invalid input returns HTTP 400.
-// ==========================================
+// 3. GET leave request by ID (GET /api/leaves/:id)
+app.get('/api/leaves/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+
+  if (isNaN(id)) {
+    return res.status(400).json({ message: "Invalid ID format" });
+  }
+
+  const leave = leaves.find(l => l.id === id);
+
+  if (!leave) {
+    return res.status(404).json({ message: "Leave request not found" });
+  }
+
+  res.status(200).json(leave);
+});
+
+// 2. POST a new record (POST /api/leaves)
 app.post('/api/leaves', (req, res) => {
   const { employeeName, employeeCode, leaveType, days, status } = req.body;
 
-  const errors = validateLeavePayload(req.body, false);
-  if (errors.length > 0) {
-    return res.status(400).json({
-      error: "Validation failed",
-      details: errors
-    });
+  // 1. Check all required fields are present and not empty
+  if (!employeeName || !employeeCode || !leaveType || days === undefined || !status) {
+    return res.status(400).json({ message: "All fields are required" });
   }
 
-  const newRecord = {
-    id: generateUniqueId(),
-    employeeName: employeeName.trim(),
-    employeeCode: employeeCode.trim(),
+  // 2. Check days: must be a positive integer (> 0)
+  if (typeof days !== 'number' || !Number.isInteger(days) || days <= 0) {
+    return res.status(400).json({ message: "days must be a positive integer" });
+  }
+
+  // 3. Check leaveType: Casual, Sick, or Earned
+  const validLeaveTypes = ["Casual", "Sick", "Earned"];
+  if (!validLeaveTypes.includes(leaveType)) {
+    return res.status(400).json({ message: "leaveType must be Casual, Sick, or Earned" });
+  }
+
+  // 4. Check status: Pending, Approved, or Rejected
+  const validStatuses = ["Pending", "Approved", "Rejected"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: "status must be Pending, Approved, or Rejected" });
+  }
+
+  // Create new record with unique numeric ID
+  const newLeave = {
+    id: nextId++,
+    employeeName,
+    employeeCode,
     leaveType,
     days,
     status
   };
 
-  leaves.push(newRecord);
-  return res.status(201).json(newRecord);
+  leaves.push(newLeave);
+  res.status(201).json(newLeave);
 });
 
-// ==========================================
-// 3. GET Leave Request by ID (2 Marks)
-// Route: GET /api/leaves/:id
-// Return matching record with HTTP 200. If ID does not exist, return HTTP 404.
-// ==========================================
-app.get('/api/leaves/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id)) {
-    return res.status(400).json({
-      error: "Invalid ID parameter. ID must be a numeric integer."
-    });
-  }
-
-  const record = leaves.find(leave => leave.id === id);
-
-  if (!record) {
-    return res.status(404).json({
-      error: `Leave request with ID ${id} not found.`
-    });
-  }
-
-  return res.status(200).json(record);
-});
-
-// ==========================================
-// 4. PUT / Update a Record (3 Marks)
-// Route: PUT /api/leaves/:id
-// Update requested record using JSON body. Return updated record with HTTP 200.
-// If not found, return HTTP 404. Invalid input returns HTTP 400.
-// ==========================================
+// 4. PUT / update a record (PUT /api/leaves/:id)
 app.put('/api/leaves/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id);
 
   if (isNaN(id)) {
-    return res.status(400).json({
-      error: "Invalid ID parameter. ID must be a numeric integer."
-    });
+    return res.status(400).json({ message: "Invalid ID format" });
   }
 
-  const index = leaves.findIndex(leave => leave.id === id);
+  const leave = leaves.find(l => l.id === id);
 
-  if (index === -1) {
-    return res.status(404).json({
-      error: `Leave request with ID ${id} not found.`
-    });
-  }
-
-  // Validate the incoming update data
-  const errors = validateLeavePayload(req.body, false);
-  if (errors.length > 0) {
-    return res.status(400).json({
-      error: "Validation failed",
-      details: errors
-    });
+  // Return 404 if not found
+  if (!leave) {
+    return res.status(404).json({ message: "Leave request not found" });
   }
 
   const { employeeName, employeeCode, leaveType, days, status } = req.body;
 
-  // Update existing record while preserving the unique numeric ID
-  leaves[index] = {
-    id,
-    employeeName: employeeName.trim(),
-    employeeCode: employeeCode.trim(),
-    leaveType,
-    days,
-    status
-  };
+  // Validation
+  if (!employeeName || !employeeCode || !leaveType || days === undefined || !status) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
 
-  return res.status(200).json(leaves[index]);
+  if (typeof days !== 'number' || !Number.isInteger(days) || days <= 0) {
+    return res.status(400).json({ message: "days must be a positive integer" });
+  }
+
+  const validLeaveTypes = ["Casual", "Sick", "Earned"];
+  if (!validLeaveTypes.includes(leaveType)) {
+    return res.status(400).json({ message: "leaveType must be Casual, Sick, or Earned" });
+  }
+
+  const validStatuses = ["Pending", "Approved", "Rejected"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: "status must be Pending, Approved, or Rejected" });
+  }
+
+  // Update the values in the existing record
+  leave.employeeName = employeeName;
+  leave.employeeCode = employeeCode;
+  leave.leaveType = leaveType;
+  leave.days = days;
+  leave.status = status;
+
+  res.status(200).json(leave);
 });
 
-// ==========================================
-// 5. DELETE a Record (2 Marks)
-// Route: DELETE /api/leaves/:id
-// Delete requested record and return suitable success message with HTTP 200.
-// If not found, return HTTP 404.
-// ==========================================
+// 5. DELETE a record (DELETE /api/leaves/:id)
 app.delete('/api/leaves/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id);
 
   if (isNaN(id)) {
-    return res.status(400).json({
-      error: "Invalid ID parameter. ID must be a numeric integer."
-    });
+    return res.status(400).json({ message: "Invalid ID format" });
   }
 
-  const index = leaves.findIndex(leave => leave.id === id);
+  const index = leaves.findIndex(l => l.id === id);
 
+  // Return 404 if not found
   if (index === -1) {
-    return res.status(404).json({
-      error: `Leave request with ID ${id} not found.`
-    });
+    return res.status(404).json({ message: "Leave request not found" });
   }
 
-  const deletedRecord = leaves.splice(index, 1)[0];
-
-  return res.status(200).json({
-    message: `Leave request with ID ${id} deleted successfully.`,
-    deletedRecord
+  // Remove from array and return 200 with success message
+  const deleted = leaves.splice(index, 1)[0];
+  res.status(200).json({
+    message: "Leave request deleted successfully",
+    deletedRecord: deleted
   });
 });
 
-// Handle undefined routes with 404
-app.use((req, res) => {
-  res.status(404).json({
-    error: `Route ${req.method} ${req.originalUrl} not found.`
-  });
-});
-
-// Start the server if executed directly
+// Start the server on port 5000 if run directly
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`====================================================`);
-    console.log(`Employee Leave Management API server running on port ${PORT}`);
-    console.log(`Access Base URL: http://localhost:${PORT}`);
-    console.log(`====================================================`);
+  app.listen(5000, () => {
+    console.log("Server is running on http://localhost:5000");
   });
 }
 
