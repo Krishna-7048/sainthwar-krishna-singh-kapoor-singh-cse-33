@@ -1,0 +1,272 @@
+{
+  "info": {
+    "_postman_id": "9f7b4e31-89a1-4a82-bc12-leaves-management-api",
+    "name": "Employee Leave Management API (SET C)",
+    "description": "Postman Collection for SET C - Mid-Term Practical Assessment (Employee Leave Management REST API)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. GET All Leaves",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves"]
+        },
+        "description": "Returns all leave request records with HTTP 200."
+      },
+      "response": []
+    },
+    {
+      "name": "2. GET Pending Leaves",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/pending",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "pending"]
+        },
+        "description": "Returns only leave requests with status 'Pending' with HTTP 200."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Filter Leaves by Status (Approved)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/filter?status=Approved",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "filter"],
+          "query": [
+            {
+              "key": "status",
+              "value": "Approved"
+            }
+          ]
+        },
+        "description": "Filter records by status (case-insensitive). HTTP 200."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Filter Leaves by Status (Pending - lowercase)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/filter?status=pending",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "filter"],
+          "query": [
+            {
+              "key": "status",
+              "value": "pending"
+            }
+          ]
+        },
+        "description": "Filter records by status case-insensitively. HTTP 200."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Filter Non-matching Status (Returns empty array)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/filter?status=NonExistent",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "filter"],
+          "query": [
+            {
+              "key": "status",
+              "value": "NonExistent"
+            }
+          ]
+        },
+        "description": "Returns empty array [] with HTTP 200 if no record matches."
+      },
+      "response": []
+    },
+    {
+      "name": "6. GET Leave by ID (701 - Success)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/701",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "701"]
+        },
+        "description": "Returns matching leave request for ID 701 with HTTP 200."
+      },
+      "response": []
+    },
+    {
+      "name": "7. GET Leave by Non-existent ID (404 Test)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/999",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "999"]
+        },
+        "description": "Returns HTTP 404 if record is not found."
+      },
+      "response": []
+    },
+    {
+      "name": "8. POST New Leave Request (Success - 201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeName\": \"Vikram Das\",\n  \"employeeCode\": \"EMP104\",\n  \"leaveType\": \"Earned\",\n  \"days\": 2,\n  \"status\": \"Pending\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/leaves",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves"]
+        },
+        "description": "Creates a new leave record, generates unique ID, returns HTTP 201."
+      },
+      "response": []
+    },
+    {
+      "name": "9. POST New Leave (Validation Failure - 400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeName\": \"Invalid Test\",\n  \"employeeCode\": \"EMP999\",\n  \"leaveType\": \"InvalidType\",\n  \"days\": -5,\n  \"status\": \"UnknownStatus\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/leaves",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves"]
+        },
+        "description": "Returns HTTP 400 when invalid input is provided."
+      },
+      "response": []
+    },
+    {
+      "name": "10. PUT Update Leave (Success - 200)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeName\": \"Ananya Singh\",\n  \"employeeCode\": \"EMP101\",\n  \"leaveType\": \"Casual\",\n  \"days\": 2,\n  \"status\": \"Approved\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/701",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "701"]
+        },
+        "description": "Updates record 701 and returns HTTP 200."
+      },
+      "response": []
+    },
+    {
+      "name": "11. PUT Update Non-existent Leave (404 Test)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeName\": \"Nobody\",\n  \"employeeCode\": \"EMP000\",\n  \"leaveType\": \"Sick\",\n  \"days\": 1,\n  \"status\": \"Pending\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/999",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "999"]
+        },
+        "description": "Returns HTTP 404 when updating non-existent record."
+      },
+      "response": []
+    },
+    {
+      "name": "12. DELETE Leave Record (Success - 200)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/702",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "702"]
+        },
+        "description": "Deletes record 702 and returns HTTP 200 with success message."
+      },
+      "response": []
+    },
+    {
+      "name": "13. DELETE Non-existent Leave (404 Test)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/leaves/999",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "leaves", "999"]
+        },
+        "description": "Returns HTTP 404 when deleting non-existent ID."
+      },
+      "response": []
+    }
+  ]
+}
