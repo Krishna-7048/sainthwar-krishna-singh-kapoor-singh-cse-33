@@ -1,8 +1,0 @@
-# GraphQL Query for Testing in GraphiQL (http://localhost:4000/graphql)
-
-{
-  student {
-    name
-    course
-  }
-}
